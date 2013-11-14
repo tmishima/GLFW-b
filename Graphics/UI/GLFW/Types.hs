@@ -64,8 +64,11 @@ data GammaRamp = GammaRamp
   , gammaRampBlue  :: [Int]
   } deriving (Data, Eq, Ord, Read, Show, Typeable)
 
--- Smart constructor for GammaRamp.
-makeGammaRamp :: [Int] -> [Int] -> [Int] -> Maybe GammaRamp
+-- | Smart constructor for GammaRamp.
+makeGammaRamp :: [Int] -- ^ An array of value describing the response of the blue channel.
+              -> [Int] -- ^ An array of value describing the response of the green channel.
+              -> [Int] -- ^ An array of value describing the response of the red channel.
+              -> Maybe GammaRamp
 makeGammaRamp rs gs bs
     | lengthsEqual = Just $ GammaRamp rs gs bs
     | otherwise    = Nothing

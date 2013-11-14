@@ -288,7 +288,11 @@ getPrimaryMonitor = do
         then Nothing
         else Just $ fromC p'mon
 
-getMonitorPos :: Monitor -> IO (Int, Int)
+-- | This function returns the position, in screen coordinates, of the
+--   upper-left corner of the specified monitor.
+--
+getMonitorPos :: Monitor      -- ^ The monitor to query. 
+              -> IO (Int, Int) -- ^ (x-coordinate,y-coordinate)
 getMonitorPos mon =
     allocaArray 2 $ \p -> do
         let p'x = p
@@ -298,7 +302,12 @@ getMonitorPos mon =
         y <- fromC `fmap` peek p'y
         return (x, y)
 
-getMonitorPhysicalSize :: Monitor -> IO (Int, Int)
+-- | This function returns the size, in millimetres, of the display area of
+--   the specified monitor.
+--
+getMonitorPhysicalSize
+  :: Monitor -- ^ The monitor to query.
+  -> IO (Int, Int) -- ^ (width,height)[mm],of the monitor's display area
 getMonitorPhysicalSize mon =
     allocaArray 2 $ \p -> do
         let p'w = p
@@ -308,6 +317,7 @@ getMonitorPhysicalSize mon =
         h <- fromC `fmap` peek p'h
         return (w, h)
 
+-- | This function returns a human-readable name of the specified monitor.
 getMonitorName :: Monitor -> IO (Maybe String)
 getMonitorName mon = do
     p'name <- c'glfwGetMonitorName (toC mon)
@@ -315,6 +325,13 @@ getMonitorName mon = do
       then return Nothing
       else Just `fmap` peekCString p'name
 
+-- | This function sets the monitor configuration callback, or removes the
+-- currently set callback. This is called when a monitor is connected to or
+-- disconnected from the system.
+--
+-- * Bug:
+--     X11: This callback is not yet called on monitor configuration
+--     changes.
 setMonitorCallback :: Maybe MonitorCallback -> IO ()
 setMonitorCallback = setCallback
     mk'GLFWmonitorfun
@@ -338,7 +355,12 @@ getVideoMode mon = do
       then return Nothing
       else (Just . fromC) `fmap` peek p'vm
 
-setGamma :: Monitor -> Double -> IO ()
+-- | This function generates a 256-element gamma ramp from the specified
+--   exponent and then calls setGammaRamp with it.
+--
+setGamma :: Monitor -- ^ The monitor whose gamma ramp to set.
+         -> Double  -- ^ The desired exponent.
+         -> IO ()
 setGamma mon e =
     c'glfwSetGamma (toC mon) (toC e)
 
@@ -366,6 +388,7 @@ getGammaRamp m = do
                   , gammaRampBlue  = bs
                   }
 
+-- | This function sets the current gamma ramp for the specified monitor.
 setGammaRamp :: Monitor -> GammaRamp -> IO ()
 setGammaRamp mon gr =
     let rs = map toC $ gammaRampRed   gr :: [CUShort]
@@ -426,7 +449,16 @@ windowHint wh =
       (WindowHint'OpenGLDebugContext  x) -> (c'GLFW_OPENGL_DEBUG_CONTEXT,  toC x)
       (WindowHint'OpenGLProfile       x) -> (c'GLFW_OPENGL_PROFILE,        toC x)
 
-createWindow :: Int -> Int -> String -> Maybe Monitor -> Maybe Window -> IO (Maybe Window)
+-- | This function creates a window and its associated context. Most of the
+-- options controlling how the window and its context should be created are
+-- specified through windowHint.
+--
+createWindow :: Int -- ^ Width(>0), in screen coordinates, of the window. 
+             -> Int -- ^ Height(>0), in screen coordinates, of the window.
+             -> String -- ^ The initial window title. 
+             -> Maybe Monitor -- ^ The monitor to use for full screen mode, or Nothing to use windowed mode.
+             -> Maybe Window -- ^ The window whose context to share resources with, or Nothing to not share resources. 
+             -> IO (Maybe Window)
 createWindow w h title mmon mwin =
     withCString title $ \ptitle -> do
         charFun             <- newIORef nullFunPtr
@@ -492,12 +524,21 @@ destroyWindow win = do
     free storedWindowSizeFun
     freeStablePtr pcb
 
-
-windowShouldClose :: Window -> IO Bool
+-- | This function returns the value of the close flag of the specified
+--   window.
+--
+windowShouldClose :: Window -- ^ The window to query. 
+                  -> IO Bool -- ^ The value of the close flag.
 windowShouldClose win =
     fromC `fmap` c'glfwWindowShouldClose (toC win)
 
-setWindowShouldClose :: Window -> Bool -> IO ()
+-- | This function sets the value of the close flag of the specified
+-- window. This can be used to override the user's attempt to close the
+-- window, or to signal that it should be closed.
+--
+setWindowShouldClose :: Window -- ^ The window whose flag to change. 
+                     -> Bool -- ^ The new value.
+                     -> IO ()
 setWindowShouldClose win b =
     c'glfwSetWindowShouldClose (toC win) (toC b)
 
@@ -684,9 +725,38 @@ setFramebufferSizeCallback win = setWindowCallback
     storedFramebufferSizeFun
     win
 
+-- |This function processes only those events that have already been
+--  received and then returns immediately. Processing events will cause the
+--  window and input callbacks associated with those events to be called.
+--
+--  This function is not required for joystick input to work.
+--
+--  * New in GLFW 3 : 
+--     This function is no longer called by 'swapBuffers'. You need to
+--     call it or waitEvents yourself.
+--
 pollEvents :: IO ()
 pollEvents = c'glfwPollEvents
 
+-- | This function puts the calling thread to sleep until at least one
+-- event has been received. Once one or more events have been received, it
+-- behaves as if glfwPollEvents was called, i.e. the events are processed
+-- and the function then returns immediately. Processing events will cause
+-- the window and input callbacks associated with those events to be
+-- called.
+--
+-- Since not all events are associated with callbacks, this function may
+-- return without a callback having been called even if you are monitoring
+-- all callbacks.
+--
+-- This function is not required for joystick input to work.
+--
+-- * Note : 
+--     This function may only be called from the main thread.
+--     This function may not be called from a callback.
+--     On some platforms, certain callbacks may be called outside
+--     of a call to one of the event processing functions.
+--
 waitEvents :: IO ()
 waitEvents = c'glfwWaitEvents
 
@@ -820,14 +890,28 @@ getJoystickName js = do
 --------------------------------------------------------------------------------
 -- Time
 
-getTime :: IO (Maybe Double)
+-- | This function returns the value of the GLFW timer. Unless the timer
+--   has been set using setTime, the timer measures time elapsed since
+--   GLFW was initialized.
+--
+-- * Note : 
+--       The resolution of the timer is system dependent, but is usually on
+--       the order of a few micro- or nanoseconds. It uses the
+--       highest-resolution monotonic time source on each supported
+--       platform. 
+--
+getTime :: IO (Maybe Double) -- ^ The current value, in seconds, or zero if an error occurred.
 getTime = do
     t <- fromC `fmap` c'glfwGetTime
     return $ if t == 0
       then Nothing
       else Just t
 
-setTime :: Double -> IO ()
+-- | This function sets the value of the GLFW timer. It then continues to
+--   count up from that value.
+--
+setTime :: Double -- ^ The new value, in seconds.
+        -> IO ()
 setTime =
     c'glfwSetTime . toC
 
@@ -845,15 +929,58 @@ getCurrentContext = do
       then Nothing
       else Just $ fromC p'win
 
-swapBuffers :: Window -> IO ()
+-- | This function swaps the front and back buffers of the specified
+--   window. If the swap interval is greater than zero, the GPU driver waits
+--   the specified number of screen updates before swapping the buffers.
+--
+-- * New in GLFW 3
+--    This function no longer calls 'pollEvents'. You need to call it or
+--    'waitEvents' yourself.
+--
+swapBuffers :: Window -- ^ The window whose buffers to swap.
+            -> IO ()
 swapBuffers =
     c'glfwSwapBuffers . toC
 
-swapInterval :: Int -> IO ()
+-- | This function sets the swap interval for the current context, i.e. the
+--   number of screen updates to wait before swapping the buffers of a window
+--   and returning from 'swapBuffers'. This is sometimes called 'vertical
+--   synchronization', 'vertical retrace synchronization' or 'vsync'.
+--
+--   Contexts that support either of the WGL_EXT_swap_control_tear and
+--   GLX_EXT_swap_control_tear extensions also accept negative swap
+--   intervals, which allow the driver to swap even if a frame arrives
+--   a little bit late. You can check for the presence of these extensions
+--   using 'extensionSupported'. For more information about swap tearing,
+--   see the extension specifications.
+--
+-- * Note : 
+--    This function is not called during window creation, leaving the swap
+--    interval set to whatever is the default on that platform. This is
+--    done because some swap interval extensions used by GLFW do not allow
+--    the swap interval to be reset to zero once it has been set to
+--    a non-zero value.
+--    Some GPU drivers do not honor the requested swap interval, either
+--    because of user settings that override the request or due to bugs
+--    in the driver.
+--
+swapInterval :: Int -- ^ The minimum number of screen updates to wait for until the buffers are swapped by 'swapBuffers'.
+             -> IO ()
 swapInterval =
     c'glfwSwapInterval . toC
 
-extensionSupported :: String -> IO Bool
+-- | This function returns whether the specified OpenGL or context creation
+-- API extension is supported by the current context. For example, on
+-- Windows both the OpenGL and WGL extension strings are checked.
+--
+-- * Note :
+--    As this functions searches one or more extension strings on each
+--    call, it is recommended that you cache its results if it's going to
+--    be used frequently. The extension strings will not change during the
+--    lifetime of a context, so there is no danger in doing this. 
+--
+extensionSupported :: String -- ^ name of the extension.
+                   -> IO Bool
 extensionSupported ext =
     withCString ext $ \p'ext ->
       fromC `fmap` c'glfwExtensionSupported p'ext
