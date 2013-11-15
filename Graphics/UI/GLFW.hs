@@ -584,22 +584,42 @@ getFramebufferSize win =
         h <- fromC `fmap` peek p'h
         return (w, h)
 
+-- | This function iconifies/minimizes the specified window, if it was
+-- previously restored. If it is a full screen window, the original monitor
+-- resolution is restored until the window is restored. If the window is
+-- already iconified, this function does nothing.
+--
 iconifyWindow :: Window -> IO ()
 iconifyWindow =
     c'glfwIconifyWindow . toC
 
+-- | This function restores the specified window, if it was previously
+-- iconified/minimized. If it is a full screen window, the resolution
+-- chosen for the window is restored on the selected monitor. If the window
+-- is already restored, this function does nothing.
+--
 restoreWindow :: Window -> IO ()
 restoreWindow =
     c'glfwRestoreWindow . toC
 
+-- | This function makes the specified window visible, if it was previously
+-- hidden. If the window is already visible or is in full screen mode, this
+-- function does nothing.
+--
 showWindow :: Window -> IO ()
 showWindow =
     c'glfwShowWindow . toC
 
+-- | This function hides the specified window, if it was previously
+-- visible. If the window is already hidden or is in full screen mode, this
+-- function does nothing.
+--
 hideWindow :: Window -> IO ()
 hideWindow =
     c'glfwHideWindow . toC
 
+-- | This function returns the handle of the monitor that the specified
+-- window is in full screen on.
 getWindowMonitor :: Window -> IO (Maybe Monitor)
 getWindowMonitor win = do
     p'mon <- c'glfwGetWindowMonitor (toC win)
@@ -607,7 +627,19 @@ getWindowMonitor win = do
       then Nothing
       else Just $ fromC p'mon
 
-setCursorPos :: Window -> Double -> Double -> IO ()
+-- | This function sets the position, in screen coordinates, of the cursor
+-- relative to the upper-left corner of the client area of the specified
+-- window. The window must be focused. If the window does not have focus
+-- when this function is called, it fails silently.
+--
+-- If the cursor is disabled (with GLFW_CURSOR_DISABLED) then the cursor
+-- position is unbounded and limited only by the minimum and maximum values
+-- of a double.
+--
+setCursorPos :: Window -- ^ The desired window. 
+             -> Double -- ^ x,relative to the left edge of the client area.
+             -> Double -- ^ y,relative to the top edge of the client area.
+             -> IO ()
 setCursorPos win x y =
     c'glfwSetCursorPos (toC win) (toC x) (toC y)
 
@@ -765,6 +797,16 @@ waitEvents = c'glfwWaitEvents
 
 -- start of glfw{GS}etInputMode-related functions
 
+-- | This function set the 'CursorInputMode'.
+--
+-- * GLFW_CURSOR_NORMAL makes the cursor visible and behaving normally.
+--
+-- * GLFW_CURSOR_HIDDEN makes the cursor invisible when it is over
+--   the client area of the window.
+--
+-- * GLFW_CURSOR_DISABLED disables the cursor and removes any limitations
+--   on cursor movement.
+--
 getCursorInputMode :: Window -> IO CursorInputMode
 getCursorInputMode win =
     fromC `fmap` c'glfwGetInputMode (toC win) c'GLFW_CURSOR
@@ -773,32 +815,80 @@ setCursorInputMode :: Window -> CursorInputMode -> IO ()
 setCursorInputMode win c =
     c'glfwSetInputMode (toC win) c'GLFW_CURSOR (toC c)
 
+-- | This function returns the 'StickyKeysInputMode'.
 getStickyKeysInputMode :: Window -> IO StickyKeysInputMode
 getStickyKeysInputMode win =
     fromC `fmap` c'glfwGetInputMode (toC win) c'GLFW_STICKY_KEYS
 
+-- | If sticky keys are enabled, a key press will ensure that 'getKey'
+-- returns 'KeyState'Pressed' the next time it is called even if the
+-- key had been released before the call. This is useful when you are
+-- only interested in whether keys have been pressed but not when or
+-- in which order.
+--
 setStickyKeysInputMode :: Window -> StickyKeysInputMode -> IO ()
 setStickyKeysInputMode win sk =
     c'glfwSetInputMode (toC win) c'GLFW_STICKY_KEYS (toC sk)
 
+-- | This function returns the 'StickyMouseButtonsInputMode'.
 getStickyMouseButtonsInputMode :: Window -> IO StickyMouseButtonsInputMode
 getStickyMouseButtonsInputMode win =
     fromC `fmap` c'glfwGetInputMode (toC win) c'GLFW_STICKY_MOUSE_BUTTONS
 
+-- | If sticky mouse buttons are enabled, a mouse button press will
+-- ensure that 'getMouseButton' returns 'MouseButtonState'Pressed' the
+-- next time it is called even if the mouse button had been released
+-- before the call. This is useful when you are only interested in
+-- whether mouse buttons have been pressed but not when or in which
+-- order.
+--
 setStickyMouseButtonsInputMode :: Window -> StickyMouseButtonsInputMode -> IO ()
 setStickyMouseButtonsInputMode win smb =
     c'glfwSetInputMode (toC win) c'GLFW_STICKY_MOUSE_BUTTONS (toC smb)
 
 -- end of glfw{GS}etInputMode-related functions
 
+-- | This function returns the last state reported for the specified key to
+-- the specified window. The returned state is one of GLFW_PRESS or
+-- GLFW_RELEASE. The higher-level state GLFW_REPEAT is only reported to the
+-- key callback.
+--
+-- If the GLFW_STICKY_KEYS input mode is enabled, this function returns
+-- GLFW_PRESS the first time you call this function after a key has been
+-- pressed, even if the key has already been released.
+--
+-- The key functions deal with physical keys, with key tokens named after
+-- their use on the standard US keyboard layout. If you want to input text,
+-- use the Unicode character callback instead.
+--
 getKey :: Window -> Key -> IO KeyState
 getKey win k =
     fromC `fmap` c'glfwGetKey (toC win) (toC k)
 
+-- | This function returns the last state reported for the specified mouse
+-- button to the specified window.
+--
+-- If the GLFW_STICKY_MOUSE_BUTTONS input mode is enabled, this function
+-- returns GLFW_PRESS the first time you call this function after a mouse
+-- button has been pressed, even if the mouse button has already been
+-- released.
+--
 getMouseButton :: Window -> MouseButton -> IO MouseButtonState
 getMouseButton win b =
     fromC `fmap` c'glfwGetMouseButton (toC win) (toC b)
 
+-- | This function returns the last reported position of the cursor, in
+-- screen coordinates, relative to the upper-left corner of the client area
+-- of the specified window.
+--
+-- If the cursor is disabled (with GLFW_CURSOR_DISABLED) then the cursor
+-- position is unbounded and limited only by the minimum and maximum values
+-- of a double.
+--
+-- The coordinate can be converted to their integer equivalents with the
+-- floor function. Casting directly to an integer type works for positive
+-- coordinates, but fails for negative ones.
+--
 getCursorPos :: Window -> IO (Double, Double)
 getCursorPos win =
     allocaArray 2 $ \p -> do
@@ -809,6 +899,27 @@ getCursorPos win =
         y <- fromC `fmap` peek p'y
         return (x, y)
 
+-- | This function sets the key callback of the specific window, which is
+-- called when a key is pressed, repeated or released.
+--
+-- The key functions deal with physical keys, with layout independent key
+-- tokens named after their values in the standard US keyboard layout. If
+-- you want to input text, use the character callback instead.
+--
+-- When a window loses focus, it will generate synthetic key release events
+-- for all pressed keys. You can tell these events from user-generated
+-- events by the fact that the synthetic ones are generated after the
+-- window has lost focus, i.e. GLFW_FOCUSED will be false and the focus
+-- callback will have already been called.
+--
+-- The scancode of a key is specific to that platform or sometimes even to
+-- that machine. Scancodes are intended to allow users to bind keys that
+-- don't have a GLFW key token. Such keys have key set to GLFW_KEY_UNKNOWN,
+-- their state is not saved and so it cannot be retrieved with 'getKey'.
+--
+-- Sometimes GLFW needs to generate synthetic key events, in which case the
+-- scancode may be zero.
+--
 setKeyCallback :: Window -> Maybe KeyCallback -> IO ()
 setKeyCallback win = setWindowCallback
     mk'GLFWkeyfun
@@ -818,6 +929,13 @@ setKeyCallback win = setWindowCallback
     storedKeyFun
     win
 
+-- | This function sets the character callback of the specific window,
+-- which is called when a Unicode character is input.
+--
+-- The character callback is intended for text input. If you want to know
+-- whether a specific key was pressed or released, use the key callback
+-- instead.
+--
 setCharCallback :: Window -> Maybe CharCallback -> IO ()
 setCharCallback win = setWindowCallback
     mk'GLFWcharfun
@@ -826,6 +944,15 @@ setCharCallback win = setWindowCallback
     storedCharFun
     win
 
+-- | This function sets the mouse button callback of the specified window,
+-- which is called when a mouse button is pressed or released.
+--
+-- When a window loses focus, it will generate synthetic mouse button
+-- release events for all pressed mouse buttons. You can tell these events
+-- from user-generated events by the fact that the synthetic ones are
+-- generated after the window has lost focus, i.e. GLFW_FOCUSED will be
+-- false and the focus callback will have already been called.
+--
 setMouseButtonCallback :: Window -> Maybe MouseButtonCallback -> IO ()
 setMouseButtonCallback win = setWindowCallback
     mk'GLFWmousebuttonfun
@@ -834,6 +961,11 @@ setMouseButtonCallback win = setWindowCallback
     storedMouseButtonFun
     win
 
+-- | This function sets the cursor position callback of the specified
+-- window, which is called when the cursor is moved. The callback is
+-- provided with the position, in screen coordinates, relative to the
+-- upper-left corner of the client area of the window.
+--
 setCursorPosCallback :: Window -> Maybe CursorPosCallback -> IO ()
 setCursorPosCallback win = setWindowCallback
     mk'GLFWcursorposfun
@@ -842,6 +974,10 @@ setCursorPosCallback win = setWindowCallback
     storedCursorPosFun
     win
 
+-- | This function sets the cursor boundary crossing callback of the
+-- specified window, which is called when the cursor enters or leaves the
+-- client area of the window.
+--
 setCursorEnterCallback :: Window -> Maybe CursorEnterCallback -> IO ()
 setCursorEnterCallback win = setWindowCallback
     mk'GLFWcursorenterfun
@@ -850,6 +986,13 @@ setCursorEnterCallback win = setWindowCallback
     storedCursorEnterFun
     win
 
+-- | This function sets the scroll callback of the specified window, which
+-- is called when a scrolling device is used, such as a mouse wheel or
+-- scrolling area of a touchpad.
+--
+-- The scroll callback receives all scrolling input, like that from a mouse
+-- wheel or a touchpad scrolling area.
+--
 setScrollCallback :: Window -> Maybe ScrollCallback -> IO ()
 setScrollCallback win = setWindowCallback
     mk'GLFWscrollfun
@@ -858,10 +1001,16 @@ setScrollCallback win = setWindowCallback
     storedScrollFun
     win
 
-joystickPresent :: Joystick -> IO Bool
+-- | This function returns whether the specified joystick is present.
+--
+joystickPresent :: Joystick
+                -> IO Bool -- ^ True if the joystick is present, or False otherwise. 
 joystickPresent js =
     fromC `fmap` c'glfwJoystickPresent (toC js)
 
+-- | This function returns the values of all axes of the specified
+-- joystick.
+--
 getJoystickAxes :: Joystick -> IO (Maybe [Double])
 getJoystickAxes js =
     alloca $ \p'n -> do
@@ -871,6 +1020,9 @@ getJoystickAxes js =
           then return Nothing
           else (Just . map fromC) `fmap` peekArray n p'axes
 
+-- | This function returns the state of all buttons of the specified
+-- joystick.
+--
 getJoystickButtons :: Joystick -> IO (Maybe [JoystickButtonState])
 getJoystickButtons js =
     alloca $ \p'n -> do
@@ -880,6 +1032,9 @@ getJoystickButtons js =
           then return Nothing
           else (Just . map fromC) `fmap` peekArray n p'buttons
 
+-- | This function returns the name, encoded as UTF-8, of the specified
+-- joystick.
+--
 getJoystickName :: Joystick -> IO (Maybe String)
 getJoystickName js = do
     p'name <- c'glfwGetJoystickName (toC js)
@@ -918,11 +1073,19 @@ setTime =
 --------------------------------------------------------------------------------
 -- Context
 
-makeContextCurrent :: Maybe Window -> IO ()
+-- | This function makes the context of the specified window current on the
+-- calling thread. A context can only be made current on a single thread at
+-- a time and each thread can have only a single current context at a time.
+--
+makeContextCurrent :: Maybe Window -- ^ The window whose context to make current, or Nothing to detach the current context.
+                   -> IO ()
 makeContextCurrent =
     c'glfwMakeContextCurrent . maybe nullPtr toC
 
-getCurrentContext :: IO (Maybe Window)
+-- | This function returns the window whose context is current on the
+-- calling thread.
+--
+getCurrentContext :: IO (Maybe Window) -- ^ The window whose context is current, or Nothing if no window's context is current.
 getCurrentContext = do
     p'win <- c'glfwGetCurrentContext
     return $ if p'win == nullPtr
@@ -988,11 +1151,28 @@ extensionSupported ext =
 --------------------------------------------------------------------------------
 -- Clipboard
 
-setClipboardString :: Window -> String -> IO ()
+-- | This function sets the system clipboard to the specified, UTF-8
+-- encoded string. The string is copied before returning, so you don't have
+-- to retain it afterwards.
+--
+setClipboardString :: Window -- ^ The window that will own the clipboard contents. 
+                   -> String
+                   -> IO ()
 setClipboardString win s =
     withCString s (c'glfwSetClipboardString (toC win))
 
-getClipboardString :: Window -> IO (Maybe String)
+-- | This function returns the contents of the system clipboard, if it
+-- contains or is convertible to a UTF-8 encoded string.
+--
+-- * Note
+--   This function may only be called from the main thread.
+--   The returned string is allocated and freed by GLFW. You should
+--   not free it yourself.
+--   The returned string is valid only until the next call to
+--   'getClipboardString' or 'setClipboardString'.
+--
+getClipboardString :: Window -- ^ The window that will request the clipboard contents. 
+                   -> IO (Maybe String)
 getClipboardString win = do
     p's <- c'glfwGetClipboardString (toC win)
     if p's == nullPtr
