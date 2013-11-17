@@ -226,6 +226,9 @@ type MonitorCallback         = Monitor -> MonitorState                          
 --------------------------------------------------------------------------------
 -- Error handling
 
+-- | This function sets the error callback, which is called with an error
+-- code and a human-readable description each time a GLFW error occurs.
+--
 setErrorCallback :: Maybe ErrorCallback -> IO ()
 setErrorCallback = setCallback
     mk'GLFWerrorfun
@@ -238,10 +241,31 @@ setErrorCallback = setCallback
 --------------------------------------------------------------------------------
 -- Initialization and version information
 
+-- | This function initializes the GLFW library. Before most GLFW functions
+-- can be used, GLFW must be initialized, and before a program terminates
+-- GLFW should be terminated in order to free any resources allocated
+-- during or after initialization.
+--
+-- If this function fails, it calls 'terminate' before returning. If it
+-- succeeds, you should call 'terminate' before the program exits.
+--
+-- Additional calls to this function after successful initialization but
+-- before termination will succeed but will do nothing.
+--
 init :: IO Bool
 init =
     fromC `fmap` c'glfwInit
 
+-- | This function destroys all remaining windows, frees any allocated
+-- resources and sets the library to an uninitialized state. Once this is
+-- called, you must again call 'init' successfully before you will be
+-- able to use most GLFW functions.
+--
+-- If GLFW has been successfully initialized, this function should be
+-- called before the program exits. If initialization fails, there is no
+-- need to call this function, as it is called by 'init' before it
+-- returns failure.
+--
 terminate :: IO ()
 terminate = do
     c'glfwTerminate
@@ -249,6 +273,11 @@ terminate = do
     storeCallback storedErrorFun           nullFunPtr
     storeCallback storedMonitorFun         nullFunPtr
 
+-- | This function retrieves the major, minor and revision numbers of the
+-- GLFW library. It is intended for when you are using GLFW as a shared
+-- library and want to ensure that you are using the minimum required
+-- version. 
+--
 getVersion :: IO Version
 getVersion =
     allocaArray 3 $ \p -> do
@@ -261,6 +290,25 @@ getVersion =
         v2 <- fromC `fmap` peek p2
         return $ Version v0 v1 v2
 
+-- | This function returns a static string generated at compile-time
+-- according to which configuration macros were defined. This is intended
+-- for use when submitting bug reports, to allow developers to see which
+-- code paths are enabled in a binary.
+--
+-- The format of the string is as follows:
+--
+-- * The version of GLFW
+-- 
+-- * The name of the window system API
+--
+-- * The name of the context creation API
+--
+-- * Any additional options or APIs
+--
+-- For example, when compiling GLFW 3.0 with MinGW using the Win32
+-- and WGL back ends, the version string may look something like this:
+--  3.0.0 Win32 WGL MinGW
+--
 getVersionString :: IO (Maybe String)
 getVersionString = do
     p'vs <- c'glfwGetVersionString
@@ -271,6 +319,9 @@ getVersionString = do
 --------------------------------------------------------------------------------
 -- Monitor handling
 
+-- | This function returns an array of handles for all currently connected
+-- monitors.
+--
 getMonitors :: IO (Maybe [Monitor])
 getMonitors =
     alloca $ \p'n -> do
@@ -280,6 +331,10 @@ getMonitors =
           then return Nothing
           else (Just . map fromC) `fmap` peekArray n p'mon
 
+-- | This function returns the primary monitor. This is usually the monitor
+-- where elements like the Windows task bar or the OS X menu bar is
+-- located.
+--
 getPrimaryMonitor :: IO (Maybe Monitor)
 getPrimaryMonitor = do
     p'mon <- c'glfwGetPrimaryMonitor
@@ -339,6 +394,11 @@ setMonitorCallback = setCallback
     c'glfwSetMonitorCallback
     storedMonitorFun
 
+-- | This function returns an array of all video modes supported by the
+-- specified monitor. The returned array is sorted in ascending order,
+-- first by color bit depth (the sum of all channel depths) and then by
+-- resolution area (the product of width and height).
+--
 getVideoModes :: Monitor -> IO (Maybe [VideoMode])
 getVideoModes mon =
     alloca $ \p'n -> do
@@ -348,6 +408,10 @@ getVideoModes mon =
           then return Nothing
           else (Just . map fromC) `fmap` peekArray n p'vms
 
+-- | This function returns the current video mode of the specified monitor.
+-- If you are using a full screen window, the return value will therefore
+-- depend on whether it is focused.
+--
 getVideoMode :: Monitor -> IO (Maybe VideoMode)
 getVideoMode mon = do
     p'vm <- c'glfwGetVideoMode (toC mon)
@@ -364,6 +428,9 @@ setGamma :: Monitor -- ^ The monitor whose gamma ramp to set.
 setGamma mon e =
     c'glfwSetGamma (toC mon) (toC e)
 
+-- | This function retrieves the current gamma ramp of the specified
+-- monitor.
+--
 getGammaRamp :: Monitor -> IO (Maybe GammaRamp)
 getGammaRamp m = do
     p'ggr <- c'glfwGetGammaRamp (toC m)
@@ -413,10 +480,17 @@ setGammaRamp mon gr =
 --------------------------------------------------------------------------------
 -- Window handling
 
+-- | This function resets all window hints to their default values.
+--
 defaultWindowHints :: IO ()
 defaultWindowHints =
     c'glfwDefaultWindowHints
 
+-- | This function sets hints for the next call to 'createWindow'. The
+-- hints, once set, retain their values until changed by a call to
+-- 'windowHint' or 'defaultWindowHints', or until the library is
+-- terminated with 'terminate'.
+--
 windowHint :: WindowHint -> IO ()
 windowHint wh =
     let (t, v) = unpack
@@ -501,6 +575,10 @@ createWindow w h title mmon mwin =
                   c'glfwSetWindowUserPointer p'win (castStablePtrToPtr callbackPtr)
                   return $ Just $ fromC p'win
 
+-- | This function destroys the specified window and its context. On
+-- calling this function, no further callbacks will be called for that
+-- window.
+--
 destroyWindow :: Window -> IO ()
 destroyWindow win = do
     pcb <- castPtrToStablePtr `liftM` c'glfwGetWindowUserPointer (toC win)
@@ -542,10 +620,15 @@ setWindowShouldClose :: Window -- ^ The window whose flag to change.
 setWindowShouldClose win b =
     c'glfwSetWindowShouldClose (toC win) (toC b)
 
+-- | This function sets the window title of the specified window.
+--
 setWindowTitle :: Window -> String -> IO ()
 setWindowTitle win title =
     withCString title $ c'glfwSetWindowTitle (toC win)
 
+-- | This function retrieves the position, in screen coordinates, of the
+-- upper-left corner of the client area of the specified window.
+--
 getWindowPos :: Window -> IO (Int, Int)
 getWindowPos win =
     allocaArray 2 $ \p -> do
@@ -556,10 +639,24 @@ getWindowPos win =
         y <- fromC `fmap` peek p'y
         return (x, y)
 
+-- | This function sets the position, in screen coordinates, of the
+-- upper-left corner of the client area of the window.
+--
+-- If the specified window is a full screen window, this function does
+-- nothing.
+--
+-- If you wish to set an initial window position you should create a hidden
+-- window (using glfwWindowHint and GLFW_VISIBLE), set its position and
+-- then show it.
+--
 setWindowPos :: Window -> Int -> Int -> IO ()
 setWindowPos win x y =
     c'glfwSetWindowPos (toC win) (toC x) (toC y)
 
+-- | This function retrieves the size, in screen coordinates, of the client
+-- area of the specified window. If you wish to retrieve the size of the
+-- framebuffer in pixels, see 'getFramebufferSize'.
+--
 getWindowSize :: Window -> IO (Int, Int)
 getWindowSize win =
     allocaArray 2 $ \p -> do
@@ -570,10 +667,22 @@ getWindowSize win =
         h <- fromC `fmap` peek p'h
         return (w, h)
 
+-- | This function sets the size, in screen coordinates, of the client area
+-- of the specified window.
+--
+-- For full screen windows, this function selects and switches to the
+-- resolution closest to the specified size, without affecting the window's
+-- context. As the context is unaffected, the bit depths of the framebuffer
+-- remain unchanged.
+--
 setWindowSize :: Window -> Int -> Int -> IO ()
 setWindowSize win w h =
     c'glfwSetWindowSize (toC win) (toC w) (toC h)
 
+-- | This function retrieves the size, in pixels, of the framebuffer of the
+-- specified window. If you wish to retrieve the size of the window in
+-- screen coordinates, see 'getWindowSize'.
+--
 getFramebufferSize :: Window -> IO (Int, Int)
 getFramebufferSize win =
     allocaArray 2 $ \p -> do
@@ -645,60 +754,106 @@ setCursorPos win x y =
 
 -- start of functions related to c'glfwGetWindowAttrib
 
+-- | This function returns whether the specified window currently has
+-- input focus.
+--
 getWindowFocused :: Window -> IO FocusState
 getWindowFocused win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_FOCUSED
 
+-- | This function returns whether the specified window is currently 
+-- iconified, whether by the user or with 'iconifyWindow'.
+-- 
 getWindowIconified :: Window -> IO IconifyState
 getWindowIconified win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_ICONIFIED
 
+-- | This function returns whether the specified window is resizable by the
+-- user. This is controlled by the window hint with the same name.
+--
 getWindowResizable :: Window -> IO Bool
 getWindowResizable win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_RESIZABLE
 
+-- | This function returns whether the specified window has decorations
+-- such as a border, a close widget, etc. This is controlled by the window
+-- hint with the same name.
+--
 getWindowDecorated :: Window -> IO Bool
 getWindowDecorated win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_DECORATED
 
+-- | This function returns whether the specified window is currently
+-- visible. Window visibility can be controlled with 'showWindow' and
+-- 'hideWindow' and initial visibility is controlled by the window hint
+-- with the same name.
+--
 getWindowVisible :: Window -> IO Bool
 getWindowVisible win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_VISIBLE
 
+-- | This function returns the client API provided by the window's context;
+-- either GLFW_OPENGL_API or GLFW_OPENGL_ES_API.
+--
 getWindowClientAPI :: Window -> IO ClientAPI
 getWindowClientAPI win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_CLIENT_API
 
+-- | This function returns the client API version of the window's context.
+--
 getWindowContextVersionMajor :: Window -> IO Int
 getWindowContextVersionMajor win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_CONTEXT_VERSION_MAJOR
 
+-- | This function returns the client API version of the window's context.
+--
 getWindowContextVersionMinor :: Window -> IO Int
 getWindowContextVersionMinor win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_CONTEXT_VERSION_MINOR
 
+-- | This function returns the client API version of the window's context.
 getWindowContextVersionRevision :: Window -> IO Int
 getWindowContextVersionRevision win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_CONTEXT_REVISION
 
+-- | This function returns the robustness strategy used by the context.
+-- This is GLFW_LOSE_CONTEXT_ON_RESET or GLFW_NO_RESET_NOTIFICATION if the
+-- window's context supports robustness, or GLFW_NO_ROBUSTNESS otherwise.
+--
 getWindowContextRobustness :: Window -> IO ContextRobustness
 getWindowContextRobustness win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_CONTEXT_ROBUSTNESS
 
+-- | This function returns GL_TRUE if the window's context is an OpenGL
+-- forward-compatible one, or GL_FALSE otherwise.
+--
 getWindowOpenGLForwardCompat :: Window -> IO Bool
 getWindowOpenGLForwardCompat win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_OPENGL_FORWARD_COMPAT
 
+-- | This function returns GL_TRUE if the window's context is an OpenGL
+-- debug context, or GL_FALSE otherwise.
+--
 getWindowOpenGLDebugContext :: Window -> IO Bool
 getWindowOpenGLDebugContext win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_OPENGL_DEBUG_CONTEXT
 
+-- | This function returns the OpenGL profile used by the context. This is
+-- GLFW_OPENGL_CORE_PROFILE or GLFW_OPENGL_COMPAT_PROFILE if the context
+-- uses a known profile, or GLFW_OPENGL_ANY_PROFILE if the OpenGL profile
+-- is unknown or the context is for another client API.
+--
 getWindowOpenGLProfile :: Window -> IO OpenGLProfile
 getWindowOpenGLProfile win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_OPENGL_PROFILE
 
 -- end of functions related to c'glfwGetWindowAttrib
 
+-- | This function sets the position callback of the specified window,
+-- which is called when the window is moved. The callback is provided with
+-- the screen position of the upper-left corner of the client area of the
+-- window.
+--
 setWindowPosCallback :: Window -> Maybe WindowPosCallback -> IO ()
 setWindowPosCallback win = setWindowCallback
     mk'GLFWwindowposfun
@@ -708,6 +863,10 @@ setWindowPosCallback win = setWindowCallback
     storedWindowPosFun
     win
 
+-- | This function sets the size callback of the specified window, which is
+-- called when the window is resized. The callback is provided with the
+-- size, in screen coordinates, of the client area of the window.
+--
 setWindowSizeCallback :: Window -> Maybe WindowSizeCallback -> IO ()
 setWindowSizeCallback win = setWindowCallback
     mk'GLFWwindowsizefun
@@ -717,6 +876,15 @@ setWindowSizeCallback win = setWindowCallback
     storedWindowSizeFun
     win
 
+-- | This function sets the close callback of the specified window, which
+-- is called when the user attempts to close the window, for example by
+-- clicking the close widget in the title bar.
+--
+-- The close flag is set before this callback is called, but you can modify
+-- it at any time with 'setWindowShouldClose'.
+--
+-- The close callback is not triggered by 'destroyWindow'.
+--
 setWindowCloseCallback :: Window -> Maybe WindowCloseCallback -> IO ()
 setWindowCloseCallback win = setWindowCallback
     mk'GLFWwindowclosefun
@@ -725,6 +893,15 @@ setWindowCloseCallback win = setWindowCallback
     storedWindowCloseFun
     win
 
+-- | This function sets the refresh callback of the specified window, which
+-- is called when the client area of the window needs to be redrawn, for
+-- example if the window has been exposed after having been covered by
+-- another window.
+--
+-- On compositing window systems such as Aero, Compiz or Aqua, where the
+-- window contents are saved off-screen, this callback may be called only
+-- very infrequently or never at all.
+--
 setWindowRefreshCallback :: Window -> Maybe WindowRefreshCallback -> IO ()
 setWindowRefreshCallback win = setWindowCallback
     mk'GLFWwindowrefreshfun
@@ -733,6 +910,14 @@ setWindowRefreshCallback win = setWindowCallback
     storedWindowRefreshFun
     win
 
+-- | This function sets the focus callback of the specified window, which
+-- is called when the window gains or loses focus.
+--
+-- After the focus callback is called for a window that lost focus,
+-- synthetic key and mouse button release events will be generated for all
+-- such that had been pressed. For more information, see 'setKeyCallback'
+-- and 'setMouseButtonCallback'.
+--
 setWindowFocusCallback :: Window -> Maybe WindowFocusCallback -> IO ()
 setWindowFocusCallback win = setWindowCallback
     mk'GLFWwindowfocusfun
@@ -741,6 +926,9 @@ setWindowFocusCallback win = setWindowCallback
     storedWindowFocusFun
     win
 
+-- | This function sets the iconification callback of the specified window,
+-- which is called when the window is iconified or restored.
+--
 setWindowIconifyCallback :: Window -> Maybe WindowIconifyCallback -> IO ()
 setWindowIconifyCallback win = setWindowCallback
     mk'GLFWwindowiconifyfun
@@ -749,6 +937,10 @@ setWindowIconifyCallback win = setWindowCallback
     storedWindowIconifyFun
     win
 
+-- | This function sets the framebuffer resize callback of the specified
+-- window, which is called when the framebuffer of the specified window is
+-- resized.
+--
 setFramebufferSizeCallback :: Window -> Maybe FramebufferSizeCallback -> IO ()
 setFramebufferSizeCallback win = setWindowCallback
     mk'GLFWframebuffersizefun
@@ -797,6 +989,11 @@ waitEvents = c'glfwWaitEvents
 
 -- start of glfw{GS}etInputMode-related functions
 
+-- | This function returns the 'CursorInputMode'.
+getCursorInputMode :: Window -> IO CursorInputMode
+getCursorInputMode win =
+    fromC `fmap` c'glfwGetInputMode (toC win) c'GLFW_CURSOR
+
 -- | This function set the 'CursorInputMode'.
 --
 -- * GLFW_CURSOR_NORMAL makes the cursor visible and behaving normally.
@@ -807,10 +1004,6 @@ waitEvents = c'glfwWaitEvents
 -- * GLFW_CURSOR_DISABLED disables the cursor and removes any limitations
 --   on cursor movement.
 --
-getCursorInputMode :: Window -> IO CursorInputMode
-getCursorInputMode win =
-    fromC `fmap` c'glfwGetInputMode (toC win) c'GLFW_CURSOR
-
 setCursorInputMode :: Window -> CursorInputMode -> IO ()
 setCursorInputMode win c =
     c'glfwSetInputMode (toC win) c'GLFW_CURSOR (toC c)
