@@ -646,8 +646,8 @@ getWindowPos win =
 -- nothing.
 --
 -- If you wish to set an initial window position you should create a hidden
--- window (using glfwWindowHint and GLFW_VISIBLE), set its position and
--- then show it.
+-- window (using 'windowHint' and WindowHint'VISIBLE), set its 
+-- position and then show it.
 --
 setWindowPos :: Window -> Int -> Int -> IO ()
 setWindowPos win x y =
@@ -741,9 +741,9 @@ getWindowMonitor win = do
 -- window. The window must be focused. If the window does not have focus
 -- when this function is called, it fails silently.
 --
--- If the cursor is disabled (with GLFW_CURSOR_DISABLED) then the cursor
--- position is unbounded and limited only by the minimum and maximum values
--- of a double.
+-- If the cursor is disabled (with CursorInputMode'Disabled) then the
+-- cursor position is unbounded and limited only by the minimum and
+-- maximum values of a double.
 --
 setCursorPos :: Window -- ^ The desired window. 
              -> Double -- ^ x,relative to the left edge of the client area.
@@ -793,7 +793,7 @@ getWindowVisible win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_VISIBLE
 
 -- | This function returns the client API provided by the window's context;
--- either GLFW_OPENGL_API or GLFW_OPENGL_ES_API.
+-- either ClientAPI'GL or ClientAPI'GLES.
 --
 getWindowClientAPI :: Window -> IO ClientAPI
 getWindowClientAPI win =
@@ -817,31 +817,32 @@ getWindowContextVersionRevision win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_CONTEXT_REVISION
 
 -- | This function returns the robustness strategy used by the context.
--- This is GLFW_LOSE_CONTEXT_ON_RESET or GLFW_NO_RESET_NOTIFICATION if the
--- window's context supports robustness, or GLFW_NO_ROBUSTNESS otherwise.
+-- This is ContextRobustness'LoseContextOnReset or
+-- ContextRobustness'NoResetNotification if the window's context supports
+-- robustness, or ContextRobustness'NoRobustness otherwise.
 --
 getWindowContextRobustness :: Window -> IO ContextRobustness
 getWindowContextRobustness win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_CONTEXT_ROBUSTNESS
 
--- | This function returns GL_TRUE if the window's context is an OpenGL
--- forward-compatible one, or GL_FALSE otherwise.
+-- | This function returns True if the window's context is an OpenGL
+-- forward-compatible one, or False otherwise.
 --
 getWindowOpenGLForwardCompat :: Window -> IO Bool
 getWindowOpenGLForwardCompat win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_OPENGL_FORWARD_COMPAT
 
--- | This function returns GL_TRUE if the window's context is an OpenGL
--- debug context, or GL_FALSE otherwise.
+-- | This function returns True if the window's context is an OpenGL
+-- debug context, or False otherwise.
 --
 getWindowOpenGLDebugContext :: Window -> IO Bool
 getWindowOpenGLDebugContext win =
     fromC `fmap` c'glfwGetWindowAttrib (toC win) c'GLFW_OPENGL_DEBUG_CONTEXT
 
 -- | This function returns the OpenGL profile used by the context. This is
--- GLFW_OPENGL_CORE_PROFILE or GLFW_OPENGL_COMPAT_PROFILE if the context
--- uses a known profile, or GLFW_OPENGL_ANY_PROFILE if the OpenGL profile
--- is unknown or the context is for another client API.
+-- OpenGLProfile'Core or OpenGLProfile'Compat  if the context uses a known
+-- profile, or OpenGLProfile'Any if the OpenGL profile is unknown or the
+-- context is for another client API.
 --
 getWindowOpenGLProfile :: Window -> IO OpenGLProfile
 getWindowOpenGLProfile win =
@@ -964,7 +965,7 @@ pollEvents = c'glfwPollEvents
 
 -- | This function puts the calling thread to sleep until at least one
 -- event has been received. Once one or more events have been received, it
--- behaves as if glfwPollEvents was called, i.e. the events are processed
+-- behaves as if 'pollEvents' was called, i.e. the events are processed
 -- and the function then returns immediately. Processing events will cause
 -- the window and input callbacks associated with those events to be
 -- called.
@@ -996,13 +997,13 @@ getCursorInputMode win =
 
 -- | This function set the 'CursorInputMode'.
 --
--- * GLFW_CURSOR_NORMAL makes the cursor visible and behaving normally.
+-- * CursorInputMode'Normal makes the cursor visible and behaving normally.
 --
--- * GLFW_CURSOR_HIDDEN makes the cursor invisible when it is over
+-- * Cursorinputmode'Hidden makes the cursor invisible when it is over
 --   the client area of the window.
 --
--- * GLFW_CURSOR_DISABLED disables the cursor and removes any limitations
---   on cursor movement.
+-- * CursorInputMode'Disabled disables the cursor and removes any
+--   limitations on cursor movement.
 --
 setCursorInputMode :: Window -> CursorInputMode -> IO ()
 setCursorInputMode win c =
@@ -1042,13 +1043,13 @@ setStickyMouseButtonsInputMode win smb =
 -- end of glfw{GS}etInputMode-related functions
 
 -- | This function returns the last state reported for the specified key to
--- the specified window. The returned state is one of GLFW_PRESS or
--- GLFW_RELEASE. The higher-level state GLFW_REPEAT is only reported to the
--- key callback.
+-- the specified window. The returned state is one of KeyState'Pressed or
+-- KeyState'Released. The higher-level state KeyState'Repeating is only
+-- reported to the key callback.
 --
--- If the GLFW_STICKY_KEYS input mode is enabled, this function returns
--- GLFW_PRESS the first time you call this function after a key has been
--- pressed, even if the key has already been released.
+-- If the StickykeysInputMode is enabled, this function returns
+-- KeyState'Pressed the first time you call this function after a key has
+-- been pressed, even if the key has already been released.
 --
 -- The key functions deal with physical keys, with key tokens named after
 -- their use on the standard US keyboard layout. If you want to input text,
@@ -1061,10 +1062,10 @@ getKey win k =
 -- | This function returns the last state reported for the specified mouse
 -- button to the specified window.
 --
--- If the GLFW_STICKY_MOUSE_BUTTONS input mode is enabled, this function
--- returns GLFW_PRESS the first time you call this function after a mouse
--- button has been pressed, even if the mouse button has already been
--- released.
+-- If the StickyMouseButtonsInputMode is enabled, this function
+-- returns MouseButtonState'Pressed the first time you call this function
+-- after a mouse button has been pressed, even if the mouse button has
+-- already been released.
 --
 getMouseButton :: Window -> MouseButton -> IO MouseButtonState
 getMouseButton win b =
@@ -1074,9 +1075,9 @@ getMouseButton win b =
 -- screen coordinates, relative to the upper-left corner of the client area
 -- of the specified window.
 --
--- If the cursor is disabled (with GLFW_CURSOR_DISABLED) then the cursor
--- position is unbounded and limited only by the minimum and maximum values
--- of a double.
+-- If the cursor is disabled (with Cursorinputmode'disabled) then the
+-- cursor position is unbounded and limited only by the minimum and
+-- maximum values of a double.
 --
 -- The coordinate can be converted to their integer equivalents with the
 -- floor function. Casting directly to an integer type works for positive
@@ -1102,12 +1103,12 @@ getCursorPos win =
 -- When a window loses focus, it will generate synthetic key release events
 -- for all pressed keys. You can tell these events from user-generated
 -- events by the fact that the synthetic ones are generated after the
--- window has lost focus, i.e. GLFW_FOCUSED will be false and the focus
--- callback will have already been called.
+-- window has lost focus, i.e. FocusState will be FocusState'DeFocused and
+-- the focus callback will have already been called.
 --
 -- The scancode of a key is specific to that platform or sometimes even to
 -- that machine. Scancodes are intended to allow users to bind keys that
--- don't have a GLFW key token. Such keys have key set to GLFW_KEY_UNKNOWN,
+-- don't have a GLFW key token. Such keys have key set to Key'Unknown,
 -- their state is not saved and so it cannot be retrieved with 'getKey'.
 --
 -- Sometimes GLFW needs to generate synthetic key events, in which case the
@@ -1143,8 +1144,9 @@ setCharCallback win = setWindowCallback
 -- When a window loses focus, it will generate synthetic mouse button
 -- release events for all pressed mouse buttons. You can tell these events
 -- from user-generated events by the fact that the synthetic ones are
--- generated after the window has lost focus, i.e. GLFW_FOCUSED will be
--- false and the focus callback will have already been called.
+-- generated after the window has lost focus, i.e. FocusState will be
+-- FocusState'Defocused and the focus callback will have already been
+-- called.
 --
 setMouseButtonCallback :: Window -> Maybe MouseButtonCallback -> IO ()
 setMouseButtonCallback win = setWindowCallback
