@@ -39,6 +39,7 @@ module Graphics.UI.GLFW
   , ContextRobustness (..)
   , OpenGLProfile     (..)
   , ClientAPI         (..)
+  , HWND
     --
   , defaultWindowHints
   , windowHint
@@ -81,6 +82,7 @@ module Graphics.UI.GLFW
   , setFramebufferSizeCallback, FramebufferSizeCallback
   , pollEvents
   , waitEvents
+  , getWindowHandle
 
     -- * Input handling
   , Key                         (..)
@@ -689,6 +691,9 @@ pollEvents = c'glfwPollEvents
 
 waitEvents :: IO ()
 waitEvents = c'glfwWaitEvents
+
+getWindowHandle :: Window -> IO HWND
+getWindowHandle win = c'glfwGetWindowHandle (toC win)
 
 --------------------------------------------------------------------------------
 -- Input handling

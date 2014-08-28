@@ -1,4 +1,4 @@
-name:         GLFW-b
+name:         GLFW-ba
 version:      1.4.1
 category:     Graphics
 
@@ -51,7 +51,7 @@ library
 
   build-depends:
     base           < 5,
-    bindings-GLFW == 3.0.*
+    bindings-GLFW-a == 3.0.*
 
 --------------------------------------------------------------------------------
 
@@ -69,7 +69,7 @@ test-suite main
     GLFW-b               == 1.4.*,
     HUnit                == 1.2.*,
     base                  < 5,
-    bindings-GLFW        == 3.0.*,
+    bindings-GLFW-a      == 3.0.*,
     test-framework       == 0.8.*,
     test-framework-hunit == 0.3.*
 
@@ -77,4 +77,4 @@ test-suite main
 
 source-repository head
   type:     git
-  location: git://github.com/bsl/GLFW-b.git
+  location: git://github.com/tmishima/GLFW-b.git
