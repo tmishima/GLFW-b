@@ -40,6 +40,7 @@ module Graphics.UI.GLFW
   , OpenGLProfile     (..)
   , ClientAPI         (..)
   , HWND
+  , HDC
     --
   , defaultWindowHints
   , windowHint
@@ -83,6 +84,7 @@ module Graphics.UI.GLFW
   , pollEvents
   , waitEvents
   , getWindowHandle
+  , getWinDC
 
     -- * Input handling
   , Key                         (..)
@@ -694,6 +696,9 @@ waitEvents = c'glfwWaitEvents
 
 getWindowHandle :: Window -> IO HWND
 getWindowHandle win = c'glfwGetWindowHandle (toC win)
+
+getWinDC :: HWND -> IO HDC
+getWinDC hwnd = c'glfwGetWinDC hwnd
 
 --------------------------------------------------------------------------------
 -- Input handling
